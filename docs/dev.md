@@ -56,6 +56,22 @@ gradlew.bat linkReleaseExecutableMingwX64
 
 ---
 
+## 作業フロー規約
+
+### issueとの紐付け
+
+- すべての作業はissueと紐付けて行う
+- issueが存在しない作業は開始しない
+- ブランチ名・コミット・PRにはissue番号を含める（例: `feature/123-add-clone`、`fix #123`）
+
+### 作業計画
+
+- 作業計画はissueに記載する
+- 作業計画が記載されたissueが作成されてから実装を開始する
+- 作業計画のないissueに対して実装作業は行わない
+
+---
+
 ## Gitブランチ戦略
 
 | ブランチ | 用途 |
