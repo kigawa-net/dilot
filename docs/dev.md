@@ -62,13 +62,28 @@ gradlew.bat linkReleaseExecutableMingwX64
 
 - すべての作業はissueと紐付けて行う
 - issueが存在しない作業は開始しない
-- ブランチ名・コミット・PRにはissue番号を含める（例: `feature/123-add-clone`、`fix #123`）
+- ブランチ名・コミット・PRにはissue番号を含める（例: `feature/123-add-clone`、`refs #123`）
 
 ### 作業計画
 
 - 作業計画はissueに記載する
 - 作業計画が記載されたissueが作成されてから実装を開始する
 - 作業計画のないissueに対して実装作業は行わない
+
+### 作業ステップ
+
+1. **issue確認**: 対象issueが存在し、作業計画が本文に記載されていることを確認する
+2. **ブランチ作成**: `feature/<issue番号>-<名前>` または `fix/<issue番号>-<名前>` でブランチを作成する
+   - 例: `git checkout -b feature/5-add-clone-command`
+3. **実装**: issueの作業計画に従って実装を進める
+4. **コミット**: メッセージ末尾に `refs #<issue番号>` を含める（最後のコミットはissueを閉じる場合 `fix #<issue番号>`）
+5. **PR作成**: 実装完了後に `master` ブランチへのPRを作成する
+
+### PRの規約
+
+- タイトル形式: `<type>: <概要> refs #<issue番号>`（例: `feat: clone機能を追加 refs #5`）
+- 本文に対応issueへのリンクを含める（`Closes #<issue番号>` または `refs #<issue番号>`）
+- PRの変更内容はissueの作業計画と一致していること
 
 ---
 
