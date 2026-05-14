@@ -162,3 +162,27 @@ dilot new <name> <git-url>
 ## 制約・前提
 
 - コンフィグファイルはデフォルトで `$DILOT_CONFIG`（未設定時は `~/.dilot/config.json`）
+
+---
+
+## CI/CD設計（refs #15）
+
+### PR CI ワークフロー (`.github/workflows/ci.yml`)
+
+**トリガー**: `master` ブランチへのPRが作成・更新されたとき
+
+**ジョブ**:
+1. `build` — `./gradlew linkReleaseExecutableNative` でビルド検証
+2. `test` — `./gradlew nativeTest` でテスト実行
+
+**環境**: `ubuntu-latest` + Java 21
+
+### Release ワークフロー (`.github/workflows/release.yml`)
+
+**トリガー**: `v*` 形式のタグがプッシュされたとき（例: `v1.0.0`）
+
+**ジョブ**:
+1. `build-linux` — Linux向けネイティブバイナリをビルド (`dilot.kexe`)
+2. `release` — GitHub Releasesを作成してバイナリをアタッチ
+
+**成果物**: `build/bin/native/releaseExecutable/dilot.kexe`
