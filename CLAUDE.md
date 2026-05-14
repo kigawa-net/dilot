@@ -42,10 +42,22 @@ gh issue view <番号>
 ```
 
 - 対応するissueが存在することを確認する
-- issueの本文に作業計画が記載されていることを確認する
-- 作業計画がない場合は実装を開始せず、issueに計画を追加してから再開する
+- issueが存在しない場合は作業を開始しない
 
-### 2. ブランチ作成
+### 2. 実装計画PRの作成とマージ
+
+実装を開始する前に、実装計画をPRとして作成しマージされることを確認する。
+
+```bash
+git checkout -b plan/<issue番号>-<名前>
+```
+
+- `docs/spec.md` または対応するドキュメントに実装計画を記述する
+- 計画PR のタイトル形式: `plan: <概要> refs #<issue番号>`
+- PRをマージしてから実装ブランチに進む
+- **計画PRがマージされるまで実装を開始しない**
+
+### 3. 実装ブランチ作成
 
 ```bash
 git checkout -b feature/<issue番号>-<名前>   # 機能追加
@@ -54,7 +66,7 @@ git checkout -b fix/<issue番号>-<名前>        # バグ修正
 
 例: `git checkout -b feature/5-add-clone-command`
 
-### 3. コミット
+### 4. コミット
 
 コミットメッセージ末尾に issue番号を含める:
 
@@ -66,7 +78,7 @@ fix: 重複チェックのバグを修正 fix #7
 - 作業途中のコミットは `refs #<番号>`
 - issueを完了させる最終コミットは `fix #<番号>` または `close #<番号>`
 
-### 4. PR作成
+### 5. PR作成
 
 ```bash
 gh pr create --title "<type>: <概要> refs #<issue番号>" --body "..."
