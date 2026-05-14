@@ -1,5 +1,6 @@
 plugins {
     kotlin("multiplatform") version "2.1.21"
+    kotlin("plugin.serialization") version "2.1.21"
 }
 
 repositories {
@@ -26,6 +27,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.6")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
             }
         }
         val commonTest by getting {

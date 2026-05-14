@@ -24,7 +24,7 @@ build/bin/mingwX64/releaseExecutable/dilot.exe  # Windowsバイナリ
 
 ## コマンド仕様
 
-### `dilot new <name>`
+### `dilot new <name> <git-url>`
 
 プロジェクトをコンフィグファイルに登録する。
 
@@ -33,6 +33,8 @@ build/bin/mingwX64/releaseExecutable/dilot.exe  # Windowsバイナリ
   - 使用可能文字: 英数字・ハイフン・アンダースコア（正規表現: `[a-zA-Z0-9_-]+`）
   - 長さ: 1〜64文字
   - コンフィグ内で一意であること
+- `<git-url>`: コアリポジトリのURL（必須）
+  - `https://`、`http://`、または `git@` で始まる文字列
 
 **オプション**
 | オプション | 説明 |
@@ -41,12 +43,13 @@ build/bin/mingwX64/releaseExecutable/dilot.exe  # Windowsバイナリ
 
 **動作**
 1. `<name>` の形式を検証する（使用可能文字・長さ）
-2. コンフィグファイルのパスを解決する（後述の優先順位に従う）
-3. コンフィグファイルが存在する場合は読み込む。存在しない場合は空コンフィグとして扱う
-4. 同名プロジェクトが既に存在する場合はエラーを標準エラー出力へ出力して終了コード5で終了する
-5. 新しいプロジェクトエントリを `projects` リストへ追加する
-6. コンフィグファイルへアトミックに書き込む（一時ファイルへ書き込んでからリネーム）
-7. 成功メッセージを標準出力へ出力する
+2. `<git-url>` の形式を検証する（`https://`、`http://`、または `git@` で始まること）
+3. コンフィグファイルのパスを解決する（後述の優先順位に従う）
+4. コンフィグファイルが存在する場合は読み込む。存在しない場合は空コンフィグとして扱う
+5. 同名プロジェクトが既に存在する場合はエラーを標準エラー出力へ出力して終了コード5で終了する
+6. 新しいプロジェクトエントリを `projects` リストへ追加する
+7. コンフィグファイルへアトミックに書き込む（一時ファイルへ書き込んでからリネーム）
+8. 成功メッセージを標準出力へ出力する
 
 **出力**
 - 成功時（標準出力）: `Project "<name>" created.`
@@ -74,6 +77,7 @@ build/bin/mingwX64/releaseExecutable/dilot.exe  # Windowsバイナリ
   "projects": [
     {
       "name": "my-project",
+      "coreUrl": "https://github.com/example/repo.git",
       "createdAt": "2026-05-14T00:00:00Z"
     }
   ]
@@ -85,6 +89,7 @@ build/bin/mingwX64/releaseExecutable/dilot.exe  # Windowsバイナリ
 | `version` | integer | ○ | スキーマバージョン。現在は常に `1` |
 | `projects` | array | ○ | プロジェクトエントリの配列 |
 | `projects[].name` | string | ○ | プロジェクト名 |
+| `projects[].coreUrl` | string | ○ | コアリポジトリのURL |
 | `projects[].createdAt` | string (ISO 8601) | ○ | 登録日時（UTC） |
 
 **スキーマバージョン管理**
@@ -103,10 +108,12 @@ build/bin/mingwX64/releaseExecutable/dilot.exe  # Windowsバイナリ
 ## 処理フロー
 
 ```
-dilot new <name>
+dilot new <name> <git-url>
  ├─ 引数検証
  │    ├─ name未指定 → 終了コード2
- │    └─ name形式不正（使用可能文字・長さ）→ 終了コード2
+ │    ├─ name形式不正（使用可能文字・長さ）→ 終了コード2
+ │    ├─ git-url未指定 → 終了コード2
+ │    └─ git-url形式不正（https://, http://, git@ で始まらない）→ 終了コード2
  ├─ コンフィグファイルパス解決
  │    ├─ --config 指定あり → その値を使用
  │    ├─ $DILOT_CONFIG 設定あり → その値を使用
@@ -119,7 +126,7 @@ dilot new <name>
  │    └─ version > サポート最大値 → 終了コード1
  ├─ 同名プロジェクトの重複確認
  │    └─ 存在する → エラーメッセージ出力して終了コード5
- ├─ プロジェクトエントリ追加（name, createdAt）
+ ├─ プロジェクトエントリ追加（name, coreUrl, createdAt）
  └─ コンフィグファイルへ書き込み
       ├─ 親ディレクトリが存在しない場合は作成
       ├─ 一時ファイルへ書き込み後にリネーム（アトミック書き込み）
