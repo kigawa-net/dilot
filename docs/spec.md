@@ -167,9 +167,18 @@ dilot new <name> <git-url>
 
 ## CI/CD設計（refs #15）
 
+### ブランチ戦略
+
+| ブランチ | 用途 |
+|---|---|
+| `main` | リリース済みの安定版。pushされると自動リリース |
+| `develop` | 統合ブランチ。featureブランチのマージ先 |
+| `feature/<name>` | 機能開発。`develop` へPRを出す |
+| `fix/<name>` | バグ修正。`develop` へPRを出す |
+
 ### PR CI ワークフロー (`.github/workflows/ci.yml`)
 
-**トリガー**: `master` ブランチへのPRが作成・更新されたとき
+**トリガー**: `develop` ブランチへのPRが作成・更新されたとき
 
 **ジョブ**:
 1. `build` — `./gradlew linkReleaseExecutableNative` でビルド検証
@@ -179,10 +188,10 @@ dilot new <name> <git-url>
 
 ### Release ワークフロー (`.github/workflows/release.yml`)
 
-**トリガー**: `v*` 形式のタグがプッシュされたとき（例: `v1.0.0`）
+**トリガー**: `main` ブランチへのpush（`develop` → `main` マージ時）
 
 **ジョブ**:
 1. `build-linux` — Linux向けネイティブバイナリをビルド (`dilot.kexe`)
-2. `release` — GitHub Releasesを作成してバイナリをアタッチ
+2. `release` — コミットSHAをバージョンとしてGitHub Releasesを作成してバイナリをアタッチ
 
 **成果物**: `build/bin/native/releaseExecutable/dilot.kexe`

@@ -59,7 +59,10 @@ git checkout -b plan/<issue番号>-<名前>
 
 ### 3. 実装ブランチ作成
 
+`develop` ブランチをベースに作成する:
+
 ```bash
+git checkout develop
 git checkout -b feature/<issue番号>-<名前>   # 機能追加
 git checkout -b fix/<issue番号>-<名前>        # バグ修正
 ```
@@ -80,8 +83,10 @@ fix: 重複チェックのバグを修正 fix #7
 
 ### 5. PR作成
 
+`develop` ブランチへのPRを作成する:
+
 ```bash
-gh pr create --title "<type>: <概要> refs #<issue番号>" --body "..."
+gh pr create --title "<type>: <概要> refs #<issue番号>" --body "..." --base develop
 ```
 
 PR本文に必ず含めること:

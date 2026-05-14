@@ -94,10 +94,10 @@ gradlew.bat linkReleaseExecutableMingwX64
 
 | ブランチ | 用途 |
 |---|---|
-| `main` | リリース済みの安定版 |
-| `develop` | 統合ブランチ |
-| `feature/<name>` | 機能開発 |
-| `fix/<name>` | バグ修正 |
+| `main` | リリース済みの安定版。pushされると自動リリース |
+| `develop` | 統合ブランチ。featureブランチのマージ先 |
+| `feature/<name>` | 機能開発。`develop` へPRを出す |
+| `fix/<name>` | バグ修正。`develop` へPRを出す |
 
 ## コミットメッセージ
 
