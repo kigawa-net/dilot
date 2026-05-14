@@ -57,6 +57,32 @@ build/bin/mingwX64/releaseExecutable/dilot.exe  # Windowsバイナリ
 
 ---
 
+### `dilot o <name>`
+
+登録済みプロジェクトの `coreUrl` をcloneしてdevcontainerで開く。
+
+**引数**
+- `<name>`: プロジェクト名（必須）
+
+**オプション**
+| オプション | 説明 |
+|---|---|
+| `--config <path>` | コンフィグファイルのパスを明示指定 |
+
+**動作**
+1. コンフィグファイルからプロジェクト一覧を読み込む
+2. `<name>` に一致するプロジェクトを検索する（なければ終了コード4）
+3. `~/dilot/<name>/<repo-name>/` にリポジトリが未cloneなら `git clone <coreUrl> <path>` を実行する（`<repo-name>` はURLの末尾から `.git` を除いた文字列）
+4. `devcontainer up --workspace-folder <path>` を実行してdevcontainerを起動する
+5. `devcontainer exec --workspace-folder <path> bash` でbashを起動する
+
+**出力**
+- cloneを行う場合（標準出力）: `Cloning <url> into <path> ...`
+- devcontainer起動時（標準出力）: `Starting devcontainer for '<name>' ...`
+- エラー時（標準エラー出力）: エラー内容を示す1行メッセージ
+
+---
+
 ### コンフィグファイル仕様
 
 **パス解決（優先順位）**
