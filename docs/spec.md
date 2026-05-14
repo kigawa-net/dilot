@@ -162,3 +162,36 @@ dilot new <name> <git-url>
 ## 制約・前提
 
 - コンフィグファイルはデフォルトで `$DILOT_CONFIG`（未設定時は `~/.dilot/config.json`）
+
+---
+
+## CI/CD設計（refs #15）
+
+### ブランチ戦略
+
+| ブランチ | 用途 |
+|---|---|
+| `main` | リリース済みの安定版。pushされると自動リリース |
+| `develop` | 統合ブランチ。featureブランチのマージ先 |
+| `feature/<name>` | 機能開発。`develop` へPRを出す |
+| `fix/<name>` | バグ修正。`develop` へPRを出す |
+
+### PR CI ワークフロー (`.github/workflows/ci.yml`)
+
+**トリガー**: `develop` ブランチへのPRが作成・更新されたとき
+
+**ジョブ**:
+1. `build` — `./gradlew linkReleaseExecutableNative` でビルド検証
+2. `test` — `./gradlew nativeTest` でテスト実行
+
+**環境**: `ubuntu-latest` + Java 21
+
+### Release ワークフロー (`.github/workflows/release.yml`)
+
+**トリガー**: `main` ブランチへのpush（`develop` → `main` マージ時）
+
+**ジョブ**:
+1. `build-linux` — Linux向けネイティブバイナリをビルド (`dilot.kexe`)
+2. `release` — コミットSHAをバージョンとしてGitHub Releasesを作成してバイナリをアタッチ
+
+**成果物**: `build/bin/native/releaseExecutable/dilot.kexe`
