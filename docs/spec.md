@@ -274,3 +274,72 @@ develop → main マージ後:
   → 3プラットフォーム並列ビルド
   → GitHub Releases に公開
 ```
+
+---
+
+## リリース用GitHub Actions設計（refs #22）
+
+### 概要
+
+`workflow_dispatch` で任意のバージョンを指定し、`develop` から `release/vX.Y.Z` ブランチを作成して `main` へのPRを自動作成する。PRマージ後に `vX.Y.Z` タグをpushし、既存の `release.yml` でビルド・公開する。
+
+### ワークフロー構成
+
+#### 1. `.github/workflows/create-release.yml` — リリースブランチ作成
+
+**トリガー**: `workflow_dispatch`
+
+**入力パラメータ**:
+
+| 入力名 | 型 | 必須 | 説明 | 例 |
+|---|---|---|---|---|
+| `version` | string | ○ | セマンティックバージョン（`v` なし） | `1.2.0` |
+
+**ジョブ: `create-release`**:
+
+1. `develop` をチェックアウト
+2. `release/v<version>` ブランチを作成してpush
+3. `gh pr create` で `release/v<version>` → `main` のPRを作成
+   - タイトル: `release: v<version>`
+   - 本文: `Closes: リリース v<version>`
+
+**必要なパーミッション**:
+- `contents: write` — ブランチpush用
+- `pull-requests: write` — PR作成用
+
+#### 2. `.github/workflows/tag-release.yml` — PRマージ後タグ付け
+
+**トリガー**: `pull_request` がクローズされ、`main` へマージされ、かつブランチ名が `release/v*` にマッチするとき
+
+**ジョブ: `tag-release`**:
+
+1. `main` をチェックアウト
+2. ブランチ名（`release/v<version>`）からバージョンを抽出
+3. `v<version>` タグを作成してpush
+4. タグpushが `release.yml` をトリガーし、ビルド・公開が実行される
+
+**必要なパーミッション**:
+- `contents: write` — タグpush用
+
+### リリースフロー（更新後）
+
+```
+1. GitHub ActionsのUIで create-release.yml を dispatch（version入力: 例 "1.2.0"）
+   → develop から release/v1.2.0 ブランチを作成
+   → main へのPRを自動作成
+
+2. PRをレビュー・マージ
+   → tag-release.yml が起動
+   → v1.2.0 タグをpush
+
+3. タグpushで release.yml が起動
+   → 3プラットフォーム並列ビルド
+   → GitHub Releases に公開
+```
+
+### 変更ファイル一覧
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `.github/workflows/create-release.yml` | 新規作成 | dispatch でリリースブランチ・PR作成 |
+| `.github/workflows/tag-release.yml` | 新規作成 | PRマージ後にタグをpush |
