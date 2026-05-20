@@ -274,3 +274,79 @@ develop → main マージ後:
   → 3プラットフォーム並列ビルド
   → GitHub Releases に公開
 ```
+
+---
+
+## リリース用GitHub Actions設計（refs #22）
+
+### 概要
+
+`workflow_dispatch` でバンプ種別（major/minor/patch）を選択し、最新タグから次バージョンを自動算出して `develop` から `release/vX.Y.Z` ブランチを作成・`main` へのPRを自動作成する。PRマージ後に `vX.Y.Z` タグをpushし、既存の `release.yml` でビルド・公開する。
+
+### ワークフロー構成
+
+#### 1. `.github/workflows/create-release.yml` — リリースブランチ作成
+
+**トリガー**: `workflow_dispatch`
+
+**入力パラメータ**:
+
+| 入力名 | 型 | 選択肢 | 説明 |
+|---|---|---|---|
+| `bump` | choice | `patch` / `minor` / `major` | バンプするバージョン種別。デフォルトは `patch` |
+
+**ジョブ: `create-release`**:
+
+1. `git tag --sort=-v:refname` で最新の `v*` タグを取得し `MAJOR.MINOR.PATCH` を抽出する
+   - タグが存在しない場合は `0.0.0` を初期値とする
+2. `bump` 入力に応じて次バージョンを算出する
+   - `major`: `(MAJOR+1).0.0`
+   - `minor`: `MAJOR.(MINOR+1).0`
+   - `patch`: `MAJOR.MINOR.(PATCH+1)`
+3. `develop` をチェックアウト
+4. `release/v<next>` ブランチを作成してpush
+5. `gh pr create` で `release/v<next>` → `main` のPRを作成
+   - タイトル: `release: v<next>`
+   - 本文: リリース内容の概要
+
+**必要なパーミッション**:
+- `contents: write` — ブランチpush用
+- `pull-requests: write` — PR作成用
+
+#### 2. `.github/workflows/tag-release.yml` — PRマージ後タグ付け
+
+**トリガー**: `pull_request` がクローズされ、`main` へマージされ、かつブランチ名が `release/v*` にマッチするとき
+
+**ジョブ: `tag-release`**:
+
+1. `main` をチェックアウト
+2. ブランチ名（`release/v<version>`）からバージョンを抽出
+3. `v<version>` タグを作成してpush
+4. タグpushが `release.yml` をトリガーし、ビルド・公開が実行される
+
+**必要なパーミッション**:
+- `contents: write` — タグpush用
+
+### リリースフロー（更新後）
+
+```
+1. GitHub ActionsのUIで create-release.yml を dispatch（bump: "minor" 等を選択）
+   → 最新タグから次バージョンを自動算出（例: v1.2.0 → minor → v1.3.0）
+   → develop から release/v1.3.0 ブランチを作成
+   → main へのPRを自動作成
+
+2. PRをレビュー・マージ
+   → tag-release.yml が起動
+   → v1.2.0 タグをpush
+
+3. タグpushで release.yml が起動
+   → 3プラットフォーム並列ビルド
+   → GitHub Releases に公開
+```
+
+### 変更ファイル一覧
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `.github/workflows/create-release.yml` | 新規作成 | dispatch でリリースブランチ・PR作成 |
+| `.github/workflows/tag-release.yml` | 新規作成 | PRマージ後にタグをpush |
