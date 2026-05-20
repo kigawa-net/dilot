@@ -22,6 +22,13 @@ kotlin {
             }
         }
     }
+    macosArm64 {
+        binaries {
+            executable {
+                entryPoint = "net.kigawa.dilot.main"
+            }
+        }
+    }
 
     sourceSets {
         val commonMain by getting {

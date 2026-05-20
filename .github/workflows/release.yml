@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew linkReleaseExecutableNative
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dilot-linux-x86_64
+          path: build/bin/native/releaseExecutable/dilot.kexe
+
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew linkReleaseExecutableMacosArm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dilot-macos-arm64
+          path: build/bin/macosArm64/releaseExecutable/dilot.kexe
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew linkReleaseExecutableMingwX64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dilot-windows-x86_64
+          path: build/bin/mingwX64/releaseExecutable/dilot.exe
+
+  release:
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dilot-linux-x86_64
+          path: dist/linux/
+      - uses: actions/download-artifact@v4
+        with:
+          name: dilot-macos-arm64
+          path: dist/macos/
+      - uses: actions/download-artifact@v4
+        with:
+          name: dilot-windows-x86_64
+          path: dist/windows/
+      - name: Rename artifacts
+        run: |
+          mv dist/linux/dilot.kexe dist/dilot-linux-x86_64
+          mv dist/macos/dilot.kexe dist/dilot-macos-arm64
+          mv dist/windows/dilot.exe dist/dilot-windows-x86_64.exe
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          gh release create "$VERSION" \
+            dist/dilot-linux-x86_64 \
+            dist/dilot-macos-arm64 \
+            dist/dilot-windows-x86_64.exe \
+            --title "Release $VERSION" \
+            --generate-notes

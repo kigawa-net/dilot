@@ -195,3 +195,158 @@ dilot new <name> <git-url>
 2. `release` — コミットSHAをバージョンとしてGitHub Releasesを作成してバイナリをアタッチ
 
 **成果物**: `build/bin/native/releaseExecutable/dilot.kexe`
+
+---
+
+## ワンライナーインストール設計（refs #19）
+
+### 概要
+
+`curl https://.../install.sh | bash` でバイナリをインストールできるようにする。
+
+### 対応プラットフォーム
+
+| OS | アーキテクチャ | 成果物ファイル名 |
+|---|---|---|
+| Linux | x86_64 | `dilot-linux-x86_64` |
+| macOS | arm64 | `dilot-macos-arm64` |
+| Windows | x86_64 | `dilot-windows-x86_64.exe` |
+
+### 変更箇所
+
+#### 1. `build.gradle.kts` — macosArm64ターゲットを追加
+
+```kotlin
+macosArm64 {
+    binaries {
+        executable {
+            entryPoint = "net.kigawa.dilot.main"
+        }
+    }
+}
+```
+
+#### 2. `.github/workflows/release.yml` — マルチプラットフォームビルドに更新
+
+**トリガー変更**: `main` ブランチへのpush → `v*` タグのpush
+
+**ジョブ構成**:
+
+| ジョブ | ランナー | Gradleタスク | 成果物 |
+|---|---|---|---|
+| `build-linux` | `ubuntu-latest` | `linkReleaseExecutableNative` | `dilot-linux-x86_64` |
+| `build-macos` | `macos-14` | `linkReleaseExecutableMacosArm64` | `dilot-macos-arm64` |
+| `build-windows` | `windows-latest` | `linkReleaseExecutableMingwX64` | `dilot-windows-x86_64.exe` |
+| `release` | `ubuntu-latest` | — | 全バイナリをGitHub Releasesに公開 |
+
+**バージョン**: タグ名（例: `v0.1.0`）をリリースバージョンとして使用
+
+#### 3. `install.sh` — インストールスクリプト（リポジトリルートに配置）
+
+**動作フロー**:
+1. `uname -s` / `uname -m` でOS・アーキテクチャを検出
+2. 対応プラットフォームでなければエラー終了
+3. GitHub Releases（latest）から対応バイナリをダウンロード
+4. `~/.local/bin/dilot`（Linux/macOS）または `%USERPROFILE%\.local\bin\dilot.exe`（Windows）に配置
+5. 実行権限を付与（Linux/macOS）
+6. PATHへの追加案内を表示
+
+**インストール先（優先順位）**:
+- `$DILOT_INSTALL_DIR` 環境変数で上書き可能
+- デフォルト: `~/.local/bin`
+
+**使用方法（想定）**:
+```bash
+curl -fsSL https://raw.githubusercontent.com/kigawa-net/dilot/main/install.sh | bash
+```
+
+#### 4. `README.md` — インストール手順を追記
+
+クイックスタートセクションにワンライナーを記載する。
+
+### リリースフロー
+
+```
+develop → main マージ後:
+  git tag v<version>
+  git push origin v<version>
+  → release.yml が起動
+  → 3プラットフォーム並列ビルド
+  → GitHub Releases に公開
+```
+
+---
+
+## リリース用GitHub Actions設計（refs #22）
+
+### 概要
+
+`workflow_dispatch` でバンプ種別（major/minor/patch）を選択し、最新タグから次バージョンを自動算出して `develop` から `release/vX.Y.Z` ブランチを作成・`main` へのPRを自動作成する。PRマージ後に `vX.Y.Z` タグをpushし、既存の `release.yml` でビルド・公開する。
+
+### ワークフロー構成
+
+#### 1. `.github/workflows/create-release.yml` — リリースブランチ作成
+
+**トリガー**: `workflow_dispatch`
+
+**入力パラメータ**:
+
+| 入力名 | 型 | 選択肢 | 説明 |
+|---|---|---|---|
+| `bump` | choice | `patch` / `minor` / `major` | バンプするバージョン種別。デフォルトは `patch` |
+
+**ジョブ: `create-release`**:
+
+1. `git tag --sort=-v:refname` で最新の `v*` タグを取得し `MAJOR.MINOR.PATCH` を抽出する
+   - タグが存在しない場合は `0.0.0` を初期値とする
+2. `bump` 入力に応じて次バージョンを算出する
+   - `major`: `(MAJOR+1).0.0`
+   - `minor`: `MAJOR.(MINOR+1).0`
+   - `patch`: `MAJOR.MINOR.(PATCH+1)`
+3. `develop` をチェックアウト
+4. `release/v<next>` ブランチを作成してpush
+5. `gh pr create` で `release/v<next>` → `main` のPRを作成
+   - タイトル: `release: v<next>`
+   - 本文: リリース内容の概要
+
+**必要なパーミッション**:
+- `contents: write` — ブランチpush用
+- `pull-requests: write` — PR作成用
+
+#### 2. `.github/workflows/tag-release.yml` — PRマージ後タグ付け
+
+**トリガー**: `pull_request` がクローズされ、`main` へマージされ、かつブランチ名が `release/v*` にマッチするとき
+
+**ジョブ: `tag-release`**:
+
+1. `main` をチェックアウト
+2. ブランチ名（`release/v<version>`）からバージョンを抽出
+3. `v<version>` タグを作成してpush
+4. タグpushが `release.yml` をトリガーし、ビルド・公開が実行される
+
+**必要なパーミッション**:
+- `contents: write` — タグpush用
+
+### リリースフロー（更新後）
+
+```
+1. GitHub ActionsのUIで create-release.yml を dispatch（bump: "minor" 等を選択）
+   → 最新タグから次バージョンを自動算出（例: v1.2.0 → minor → v1.3.0）
+   → develop から release/v1.3.0 ブランチを作成
+   → main へのPRを自動作成
+
+2. PRをレビュー・マージ
+   → tag-release.yml が起動
+   → v1.2.0 タグをpush
+
+3. タグpushで release.yml が起動
+   → 3プラットフォーム並列ビルド
+   → GitHub Releases に公開
+```
+
+### 変更ファイル一覧
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `.github/workflows/create-release.yml` | 新規作成 | dispatch でリリースブランチ・PR作成 |
+| `.github/workflows/tag-release.yml` | 新規作成 | PRマージ後にタグをpush |

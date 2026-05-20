@@ -10,21 +10,36 @@
 
 ## インストール
 
-[Releases](https://github.com/kigawa-net/dilot/releases) からバイナリをダウンロードして `PATH` の通った場所に配置する。
+### ワンライナー（Linux / macOS）
 
 ```bash
-# Linux
-curl -L https://github.com/kigawa-net/dilot/releases/latest/download/dilot-linux -o /usr/local/bin/dilot
-chmod +x /usr/local/bin/dilot
+curl -fsSL https://raw.githubusercontent.com/kigawa-net/dilot/main/install.sh | bash
 ```
 
-またはソースからビルド:
+インストール先は `~/.local/bin/dilot`。`$DILOT_INSTALL_DIR` 環境変数で変更可能。
+
+```bash
+# インストール先を指定する場合
+curl -fsSL https://raw.githubusercontent.com/kigawa-net/dilot/main/install.sh | DILOT_INSTALL_DIR=/usr/local/bin bash
+```
+
+### 手動インストール
+
+[Releases](https://github.com/kigawa-net/dilot/releases) からプラットフォームに合ったバイナリをダウンロードして `PATH` の通った場所に配置する。
+
+| OS | ファイル名 |
+|---|---|
+| Linux x86_64 | `dilot-linux-x86_64` |
+| macOS arm64 | `dilot-macos-arm64` |
+| Windows x86_64 | `dilot-windows-x86_64.exe` |
+
+### ソースからビルド
 
 ```bash
 git clone https://github.com/kigawa-net/dilot.git
 cd dilot
 ./gradlew linkReleaseExecutableNative
-cp build/bin/native/releaseExecutable/dilot.kexe /usr/local/bin/dilot
+cp build/bin/native/releaseExecutable/dilot.kexe ~/.local/bin/dilot
 ```
 
 ## 開発
