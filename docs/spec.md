@@ -195,3 +195,82 @@ dilot new <name> <git-url>
 2. `release` — コミットSHAをバージョンとしてGitHub Releasesを作成してバイナリをアタッチ
 
 **成果物**: `build/bin/native/releaseExecutable/dilot.kexe`
+
+---
+
+## ワンライナーインストール設計（refs #19）
+
+### 概要
+
+`curl https://.../install.sh | bash` でバイナリをインストールできるようにする。
+
+### 対応プラットフォーム
+
+| OS | アーキテクチャ | 成果物ファイル名 |
+|---|---|---|
+| Linux | x86_64 | `dilot-linux-x86_64` |
+| macOS | arm64 | `dilot-macos-arm64` |
+| Windows | x86_64 | `dilot-windows-x86_64.exe` |
+
+### 変更箇所
+
+#### 1. `build.gradle.kts` — macosArm64ターゲットを追加
+
+```kotlin
+macosArm64 {
+    binaries {
+        executable {
+            entryPoint = "net.kigawa.dilot.main"
+        }
+    }
+}
+```
+
+#### 2. `.github/workflows/release.yml` — マルチプラットフォームビルドに更新
+
+**トリガー変更**: `main` ブランチへのpush → `v*` タグのpush
+
+**ジョブ構成**:
+
+| ジョブ | ランナー | Gradleタスク | 成果物 |
+|---|---|---|---|
+| `build-linux` | `ubuntu-latest` | `linkReleaseExecutableNative` | `dilot-linux-x86_64` |
+| `build-macos` | `macos-14` | `linkReleaseExecutableMacosArm64` | `dilot-macos-arm64` |
+| `build-windows` | `windows-latest` | `linkReleaseExecutableMingwX64` | `dilot-windows-x86_64.exe` |
+| `release` | `ubuntu-latest` | — | 全バイナリをGitHub Releasesに公開 |
+
+**バージョン**: タグ名（例: `v0.1.0`）をリリースバージョンとして使用
+
+#### 3. `install.sh` — インストールスクリプト（リポジトリルートに配置）
+
+**動作フロー**:
+1. `uname -s` / `uname -m` でOS・アーキテクチャを検出
+2. 対応プラットフォームでなければエラー終了
+3. GitHub Releases（latest）から対応バイナリをダウンロード
+4. `~/.local/bin/dilot`（Linux/macOS）または `%USERPROFILE%\.local\bin\dilot.exe`（Windows）に配置
+5. 実行権限を付与（Linux/macOS）
+6. PATHへの追加案内を表示
+
+**インストール先（優先順位）**:
+- `$DILOT_INSTALL_DIR` 環境変数で上書き可能
+- デフォルト: `~/.local/bin`
+
+**使用方法（想定）**:
+```bash
+curl -fsSL https://raw.githubusercontent.com/kigawa-net/dilot/main/install.sh | bash
+```
+
+#### 4. `README.md` — インストール手順を追記
+
+クイックスタートセクションにワンライナーを記載する。
+
+### リリースフロー
+
+```
+develop → main マージ後:
+  git tag v<version>
+  git push origin v<version>
+  → release.yml が起動
+  → 3プラットフォーム並列ビルド
+  → GitHub Releases に公開
+```
