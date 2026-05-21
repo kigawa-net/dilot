@@ -344,9 +344,62 @@ develop → main マージ後:
    → GitHub Releases に公開
 ```
 
-### 変更ファイル一覧
+### 変更ファイル一覧（#22）
 
 | ファイル | 変更種別 | 内容 |
 |---|---|---|
 | `.github/workflows/create-release.yml` | 新規作成 | dispatch でリリースブランチ・PR作成 |
-| `.github/workflows/tag-release.yml` | 新規作成 | PRマージ後にタグをpush |
+| `.github/workflows/tag-release.yml` | 新規作成 | PRマージ後にタグをpush（#26 で廃止） |
+
+---
+
+## リリース時バイナリ添付設計（refs #26）
+
+### 概要
+
+`release/v*` → `main` のPRマージを1つのワークフロー（`release.yml`）で受け取り、ビルド・タグ作成・GitHub Releaseへのバイナリ添付を完結させる。#22 で追加予定の `tag-release.yml` は不要となるため廃止する。
+
+### 変更方針
+
+#### `release.yml` の変更
+
+**トリガー変更**: `v*` タグのpush → `release/v*` ブランチから `main` へのPRがマージされたとき
+
+```yaml
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+```
+
+全ジョブに以下の条件を付与:
+
+```yaml
+if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+```
+
+**ジョブ構成**:
+
+| ジョブ | 変更内容 |
+|---|---|
+| `build-linux` | 条件追加のみ（ビルド内容は変更なし） |
+| `build-macos` | 条件追加のみ |
+| `build-windows` | 条件追加のみ |
+| `release` | バージョンをタグ名でなくPRブランチ名から抽出。タグ作成を追加 |
+
+**`release` ジョブの処理**:
+
+1. PRブランチ名（`release/v1.2.0`）からバージョン `v1.2.0` を抽出
+2. `git tag v1.2.0 && git push origin v1.2.0` でタグ付け
+3. `gh release create v1.2.0` でバイナリを添付してGitHub Releaseを作成
+
+**必要なパーミッション**（`release` ジョブ）:
+- `contents: write` — タグpush・Release作成用
+
+### 変更ファイル一覧（#26）
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `.github/workflows/release.yml` | 変更 | トリガーをPRマージに変更。バージョン抽出・タグ作成を追加 |
+| `.github/workflows/tag-release.yml` | 削除 | `release.yml` に統合されるため廃止 |
