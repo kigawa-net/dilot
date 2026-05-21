@@ -8,7 +8,8 @@ repositories {
 }
 
 kotlin {
-    linuxX64("native") {
+    applyDefaultHierarchyTemplate()
+    linuxX64 {
         binaries {
             executable {
                 entryPoint = "net.kigawa.dilot.main"
