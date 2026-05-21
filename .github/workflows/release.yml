@@ -1,12 +1,15 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
 
 jobs:
   build-linux:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +25,7 @@ jobs:
           path: build/bin/native/releaseExecutable/dilot.kexe
 
   build-macos:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +41,7 @@ jobs:
           path: build/bin/macosArm64/releaseExecutable/dilot.kexe
 
   build-windows:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +63,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: dilot-linux-x86_64
@@ -70,16 +76,21 @@ jobs:
         with:
           name: dilot-windows-x86_64
           path: dist/windows/
+
       - name: Rename artifacts
         run: |
           mv dist/linux/dilot.kexe dist/dilot-linux-x86_64
           mv dist/macos/dilot.kexe dist/dilot-macos-arm64
           mv dist/windows/dilot.exe dist/dilot-windows-x86_64.exe
-      - name: Create GitHub Release
+
+      - name: Create tag and GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ github.ref_name }}"
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          VERSION="${BRANCH#release/}"
+          git tag "$VERSION"
+          git push origin "$VERSION"
           gh release create "$VERSION" \
             dist/dilot-linux-x86_64 \
             dist/dilot-macos-arm64 \
