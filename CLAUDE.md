@@ -22,13 +22,13 @@ docs/               # 仕様・開発規約ドキュメント
 ## ビルド
 
 ```bash
-./gradlew linkReleaseExecutableNative
+./gradlew linkReleaseExecutableLinuxX64
 ```
 
 ## テスト
 
 ```bash
-./gradlew nativeTest
+./gradlew linuxX64Test
 ```
 
 ## 作業フロー（必ず遵守）

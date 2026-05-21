@@ -18,11 +18,11 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew linkReleaseExecutableNative
+      - run: ./gradlew linkReleaseExecutableLinuxX64
       - uses: actions/upload-artifact@v4
         with:
           name: dilot-linux-x86_64
-          path: build/bin/native/releaseExecutable/dilot.kexe
+          path: build/bin/linuxX64/releaseExecutable/dilot.kexe
 
   build-macos:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
