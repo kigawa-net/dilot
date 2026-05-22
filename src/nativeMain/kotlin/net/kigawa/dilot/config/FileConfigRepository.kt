@@ -14,7 +14,6 @@ import platform.posix.fopen
 import platform.posix.fputs
 import platform.posix.fread
 import platform.posix.getenv
-import platform.posix.mkdir
 import platform.posix.rename
 
 private val json = Json { prettyPrint = true; prettyPrintIndent = "  " }
@@ -67,7 +66,7 @@ class FileConfigRepository(private val configPath: String) : ConfigRepository {
         for (part in parts) {
             current = if (current.isEmpty()) part else "$current/$part"
             if (current.isEmpty()) continue
-            mkdir(current, "1ED".toUInt(16))
+            platformMkdir(current)
         }
     }
 }

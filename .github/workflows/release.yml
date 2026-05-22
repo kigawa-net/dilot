@@ -23,6 +23,7 @@ jobs:
         with:
           name: dilot-linux-x86_64
           path: build/bin/linuxX64/releaseExecutable/dilot.kexe
+          if-no-files-found: error
 
   build-macos:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
@@ -39,6 +40,7 @@ jobs:
         with:
           name: dilot-macos-arm64
           path: build/bin/macosArm64/releaseExecutable/dilot.kexe
+          if-no-files-found: error
 
   build-windows:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
@@ -55,6 +57,7 @@ jobs:
         with:
           name: dilot-windows-x86_64
           path: build/bin/mingwX64/releaseExecutable/dilot.exe
+          if-no-files-found: error
 
   release:
     needs: [build-linux, build-macos, build-windows]
