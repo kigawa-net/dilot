@@ -423,6 +423,37 @@ develop → main マージ後:
 
 ---
 
+## 開発中バイナリのローカルインストールスクリプト設計（refs #39）
+
+### 概要
+
+`./gradlew linkReleaseExecutableNative` でビルドしたバイナリをローカルの `~/.local/bin/dilot` にコピーするシェルスクリプト `install-dev.sh` をリポジトリルートに追加する。
+
+### 動作フロー
+
+1. `./gradlew linkReleaseExecutableNative` を実行してビルドする
+2. `~/.local/bin/` ディレクトリが存在しない場合は作成する
+3. `build/bin/native/releaseExecutable/dilot.kexe` を `~/.local/bin/dilot` にコピーする
+4. 実行権限を付与する（`chmod +x`）
+5. インストール完了メッセージを出力する
+
+### 対象プラットフォーム
+
+Linux（x86_64）のみ。macOS・Windowsは対象外。
+
+### インストール先
+
+- デフォルト: `~/.local/bin/dilot`
+- `$DILOT_INSTALL_DIR` 環境変数で上書き可能
+
+### 変更ファイル一覧（#39）
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `install-dev.sh` | 新規作成 | ビルド＋ローカルインストールスクリプト |
+
+---
+
 ## PRクローズでissueも閉じる規約設計（refs #37）
 
 ### 概要
