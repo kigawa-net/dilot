@@ -6,10 +6,10 @@ INSTALL_DIR="${DILOT_INSTALL_DIR:-$HOME/.local/bin}"
 DEST="${INSTALL_DIR}/dilot"
 
 echo "Building dilot..."
-"${SCRIPT_DIR}/gradlew" -p "${SCRIPT_DIR}" linkReleaseExecutableNative
+"${SCRIPT_DIR}/gradlew" -p "${SCRIPT_DIR}" linkReleaseExecutableLinuxX64
 
 mkdir -p "$INSTALL_DIR"
-cp "${SCRIPT_DIR}/build/bin/native/releaseExecutable/dilot.kexe" "$DEST"
+cp "${SCRIPT_DIR}/build/bin/linuxX64/releaseExecutable/dilot.kexe" "$DEST"
 chmod +x "$DEST"
 
 echo "Installed to $DEST"
