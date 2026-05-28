@@ -531,3 +531,29 @@ if: github.event.pull_request.merged == true && startsWith(github.event.pull_req
 |---|---|---|
 | `.github/workflows/release.yml` | 変更 | トリガーをPRマージに変更。バージョン抽出・タグ作成を追加 |
 | `.github/workflows/tag-release.yml` | 削除 | `release.yml` に統合されるため廃止 |
+
+---
+
+## `dilot ls` コマンド実装計画（refs #43）
+
+### 概要
+
+`docs/spec.md` に既定義の `dilot ls` コマンド仕様（refs #36）をKotlin/Nativeで実装する。
+
+### 変更ファイル一覧（#43）
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `src/nativeMain/kotlin/net/kigawa/dilot/command/LsCommand.kt` | 新規作成 | `dilot ls` の実装 |
+| `src/nativeMain/kotlin/net/kigawa/dilot/Main.kt` | 変更 | `ls` サブコマンドを追加 |
+| `src/nativeTest/kotlin/net/kigawa/dilot/command/LsCommandTest.kt` | 新規作成 | `LsCommand` のユニットテスト |
+
+### 実装方針
+
+1. `LsCommand` クラスを `NewCommand` と同じ構造で作成する
+   - `repoFactory: (String) -> ConfigRepository` を受け取るコンストラクタ
+   - `--config` オプションをサポート
+2. コンフィグ読み込み: `repo.load()` でロードし、ファイル不存在時は0件として正常終了
+3. 出力フォーマット: `<name>\t<coreUrl>\t<createdAt>` を1行ずつ `println`
+4. `Main.kt` の `when` 式に `"ls"` ブランチを追加し、コマンド一覧にも `ls` を追記
+5. テスト: プロジェクト0件・1件・複数件のケースを網羅
