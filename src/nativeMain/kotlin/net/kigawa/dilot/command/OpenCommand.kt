@@ -15,7 +15,11 @@ import platform.posix.stat
 import platform.posix.system
 import kotlin.system.exitProcess
 
-class OpenCommand(private val repoFactory: (String) -> ConfigRepository = ::FileConfigRepository) {
+class OpenCommand(
+    private val repoFactory: (String) -> ConfigRepository = ::FileConfigRepository,
+    private val commandChecker: (String) -> Boolean = ::commandExists,
+    private val runner: (String) -> Int = { cmd -> system(cmd) ?: -1 },
+) {
 
     @OptIn(ExperimentalForeignApi::class)
     fun run(args: Array<String>) {
@@ -37,13 +41,26 @@ class OpenCommand(private val repoFactory: (String) -> ConfigRepository = ::File
             exitProcess(4)
         }
 
+        if (!commandChecker("devcontainer")) {
+            if (!commandChecker("npm")) {
+                printErr("Error: npm not found. Please install Node.js and npm.")
+                exitProcess(1)
+            }
+            println("Installing devcontainer CLI ...")
+            val installResult = runner("npm install -g @devcontainers/cli")
+            if (installResult != 0) {
+                printErr("Error: failed to install devcontainer CLI (exit $installResult).")
+                exitProcess(1)
+            }
+        }
+
         val home = getenv("HOME")?.toKString() ?: "."
         val repoName = project.coreUrl.trimEnd('/').substringAfterLast('/').removeSuffix(".git")
         val repoPath = "$home/dilot/$name/$repoName"
 
         if (!dirExists(repoPath)) {
             println("Cloning ${project.coreUrl} into $repoPath ...")
-            val cloneResult = system("git clone ${shellEscape(project.coreUrl)} ${shellEscape(repoPath)}")
+            val cloneResult = runner("git clone ${shellEscape(project.coreUrl)} ${shellEscape(repoPath)}")
             if (cloneResult != 0) {
                 printErr("Error: git clone failed (exit $cloneResult).")
                 exitProcess(1)
@@ -51,13 +68,13 @@ class OpenCommand(private val repoFactory: (String) -> ConfigRepository = ::File
         }
 
         println("Starting devcontainer for '$name' ...")
-        val upResult = system("devcontainer up --workspace-folder ${shellEscape(repoPath)}")
+        val upResult = runner("devcontainer up --workspace-folder ${shellEscape(repoPath)}")
         if (upResult != 0) {
             printErr("Error: devcontainer up failed (exit $upResult).")
             exitProcess(1)
         }
 
-        system("devcontainer exec --workspace-folder ${shellEscape(repoPath)} bash")
+        runner("devcontainer exec --workspace-folder ${shellEscape(repoPath)} bash")
     }
 }
 
@@ -66,5 +83,8 @@ private fun dirExists(path: String): Boolean = memScoped {
     val st = alloc<stat>()
     platform.posix.stat(path, st.ptr) == 0
 }
+
+private fun commandExists(cmd: String): Boolean =
+    system("which ${shellEscape(cmd)} > /dev/null 2>&1") == 0
 
 private fun shellEscape(s: String): String = "'${s.replace("'", "'\\''")}'"
