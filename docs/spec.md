@@ -557,3 +557,73 @@ if: github.event.pull_request.merged == true && startsWith(github.event.pull_req
 3. 出力フォーマット: `<name>\t<coreUrl>\t<createdAt>` を1行ずつ `println`
 4. `Main.kt` の `when` 式に `"ls"` ブランチを追加し、コマンド一覧にも `ls` を追記
 5. テスト: プロジェクト0件・1件・複数件のケースを網羅
+
+---
+
+## devcontainer CLI自動インストール設計（refs #46）
+
+### 概要
+
+`dilot o` コマンド実行時に `devcontainer` CLIがインストールされていない場合、自動でインストールしてから処理を続行する。
+
+### インストール判定
+
+`devcontainer` コマンドが `PATH` 上に存在するかどうかを確認する。
+
+- `which devcontainer` または `devcontainer --version` の実行結果で判定する
+- コマンドが存在しない場合のみインストールを実行する
+
+### インストール方法
+
+`devcontainer` CLIは npm パッケージ `@devcontainers/cli` として提供されている。
+
+インストールコマンド:
+
+```bash
+npm install -g @devcontainers/cli
+```
+
+- `npm` が存在しない場合はエラーメッセージを出力して終了コード1で終了する
+- インストール失敗時もエラーメッセージを出力して終了コード1で終了する
+
+### 動作フロー（`dilot o` 更新後）
+
+```
+dilot o <name>
+ ├─ コンフィグ読み込み・プロジェクト検索（既存）
+ ├─ devcontainer CLIの存在確認
+ │    ├─ 存在する → スキップ
+ │    └─ 存在しない
+ │         ├─ npm の存在確認
+ │         │    └─ 存在しない → エラー出力して終了コード1
+ │         ├─ "Installing devcontainer CLI ..." を標準出力へ表示
+ │         ├─ npm install -g @devcontainers/cli を実行
+ │         └─ 失敗時 → エラー出力して終了コード1
+ ├─ git clone（未cloneの場合）
+ ├─ devcontainer up
+ └─ devcontainer exec bash
+```
+
+### 出力メッセージ
+
+| 状況 | 出力先 | メッセージ |
+|---|---|---|
+| devcontainer CLIをインストールする場合 | 標準出力 | `Installing devcontainer CLI ...` |
+| npm が見つからない場合 | 標準エラー出力 | `Error: npm not found. Please install Node.js and npm.` |
+| インストール失敗 | 標準エラー出力 | `Error: failed to install devcontainer CLI (exit <code>).` |
+
+### 変更ファイル一覧（#46）
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `src/nativeMain/kotlin/net/kigawa/dilot/command/OpenCommand.kt` | 変更 | devcontainer CLI自動インストールロジックを追加 |
+
+### 実装方針
+
+1. `OpenCommand.run()` の devcontainer 呼び出し前に `commandExists("devcontainer")` で存在確認する
+2. `commandExists` はシェルコマンド `which <cmd>` を `system()` で実行し、戻り値0なら存在とみなす
+3. devcontainer が存在しない場合:
+   a. `commandExists("npm")` で npm を確認し、なければエラー終了
+   b. `npm install -g @devcontainers/cli` を `system()` で実行
+   c. 失敗時はエラー出力して終了コード1
+4. テスト: `commandExists` に渡すシェル呼び出しをモック可能な構造で実装する
