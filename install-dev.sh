@@ -12,6 +12,8 @@ mkdir -p "$INSTALL_DIR"
 cp "${SCRIPT_DIR}/build/bin/linuxX64/releaseExecutable/dilot.kexe" "$DEST"
 chmod +x "$DEST"
 
+cp -r "${SCRIPT_DIR}/templates" "${INSTALL_DIR}/templates"
+
 echo "Installed to $DEST"
 
 if ! echo ":$PATH:" | grep -q ":${INSTALL_DIR}:"; then
