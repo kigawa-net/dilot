@@ -19,6 +19,8 @@ class OpenCommand(
     private val repoFactory: (String) -> ConfigRepository = ::FileConfigRepository,
     private val commandChecker: (String) -> Boolean = ::commandExists,
     private val runner: (String) -> Int = { cmd -> system(cmd) ?: -1 },
+    private val fileExists: (String) -> Boolean = ::fileExistsImpl,
+    private val templateResolver: () -> String? = ::resolveTemplatePath,
 ) {
 
     @OptIn(ExperimentalForeignApi::class)
@@ -67,6 +69,26 @@ class OpenCommand(
             }
         }
 
+        val devcontainerConfig = "$repoPath/.devcontainer/devcontainer.json"
+        if (!fileExists(devcontainerConfig)) {
+            println("Generating .devcontainer from template ...")
+            val templatePath = templateResolver()
+            if (templatePath == null) {
+                printErr("Error: devcontainer template not found.")
+                exitProcess(1)
+            }
+            val mkdirResult = runner("mkdir -p ${shellEscape("$repoPath/.devcontainer")}")
+            if (mkdirResult != 0) {
+                printErr("Error: failed to generate .devcontainer: mkdir failed.")
+                exitProcess(1)
+            }
+            val cpResult = runner("cp ${shellEscape(templatePath)} ${shellEscape(devcontainerConfig)}")
+            if (cpResult != 0) {
+                printErr("Error: failed to generate .devcontainer: cp failed.")
+                exitProcess(1)
+            }
+        }
+
         println("Starting devcontainer for '$name' ...")
         val upResult = runner("devcontainer up --workspace-folder ${shellEscape(repoPath)}")
         if (upResult != 0) {
@@ -84,7 +106,34 @@ private fun dirExists(path: String): Boolean = memScoped {
     platform.posix.stat(path, st.ptr) == 0
 }
 
+@OptIn(ExperimentalForeignApi::class)
+private fun fileExistsImpl(path: String): Boolean = memScoped {
+    val st = alloc<stat>()
+    platform.posix.stat(path, st.ptr) == 0
+}
+
 private fun commandExists(cmd: String): Boolean =
     system("which ${shellEscape(cmd)} > /dev/null 2>&1") == 0
+
+@OptIn(ExperimentalForeignApi::class)
+private fun resolveTemplatePath(): String? {
+    val envDir = getenv("DILOT_TEMPLATE_DIR")?.toKString()
+    if (envDir != null) {
+        val path = "$envDir/devcontainer.json"
+        if (fileExistsImpl(path)) return path
+    }
+
+    val binaryDir = getBinaryDir()
+    if (binaryDir != null) {
+        val path = "$binaryDir/templates/devcontainer.json"
+        if (fileExistsImpl(path)) return path
+    }
+
+    val home = getenv("HOME")?.toKString() ?: return null
+    val path = "$home/.dilot/templates/devcontainer.json"
+    if (fileExistsImpl(path)) return path
+
+    return null
+}
 
 private fun shellEscape(s: String): String = "'${s.replace("'", "'\\''")}'"
