@@ -627,3 +627,68 @@ dilot o <name>
    b. `npm install -g @devcontainers/cli` を `system()` で実行
    c. 失敗時はエラー出力して終了コード1
 4. テスト: `commandExists` に渡すシェル呼び出しをモック可能な構造で実装する
+
+---
+
+## `.devcontainer` テンプレート自動生成設計（refs #49）
+
+### 概要
+
+`dilot o <name>` 実行時、cloneしたリポジトリに `.devcontainer/devcontainer.json` が存在しない場合、デフォルトテンプレートをコピーして自動生成する。
+
+### テンプレートファイル
+
+`templates/devcontainer.json` をリポジトリに追加する。バイナリ実行時には実行ファイルと同じディレクトリ（または `$DILOT_TEMPLATE_DIR`）から読み込む。
+
+**テンプレート内容（`templates/devcontainer.json`）**:
+
+```json
+{
+  "name": "dilot-default",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu"
+}
+```
+
+### テンプレートパス解決（優先順位）
+
+1. 環境変数 `$DILOT_TEMPLATE_DIR` が設定されている場合: `$DILOT_TEMPLATE_DIR/devcontainer.json`
+2. バイナリと同じディレクトリ: `<binary-dir>/templates/devcontainer.json`
+3. `~/.dilot/templates/devcontainer.json`
+
+### 動作フロー（`dilot o` 更新後）
+
+```
+git clone 後:
+ ├─ <repoPath>/.devcontainer/devcontainer.json の存在確認
+ │    ├─ 存在する → スキップ
+ │    └─ 存在しない
+ │         ├─ "Generating .devcontainer from template ..." を標準出力へ表示
+ │         ├─ テンプレートパスを解決する
+ │         │    └─ テンプレートが見つからない → エラー出力して終了コード1
+ │         ├─ <repoPath>/.devcontainer/ ディレクトリを作成する
+ │         └─ テンプレートを <repoPath>/.devcontainer/devcontainer.json としてコピーする
+ └─ devcontainer up を実行する
+```
+
+### 出力メッセージ
+
+| 状況 | 出力先 | メッセージ |
+|---|---|---|
+| テンプレートから生成する場合 | 標準出力 | `Generating .devcontainer from template ...` |
+| テンプレートが見つからない場合 | 標準エラー出力 | `Error: devcontainer template not found.` |
+| ディレクトリ作成・コピー失敗 | 標準エラー出力 | `Error: failed to generate .devcontainer: <reason>.` |
+
+### 変更ファイル一覧（#49）
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `templates/devcontainer.json` | 新規作成 | デフォルトdevcontainerテンプレート |
+| `src/nativeMain/kotlin/net/kigawa/dilot/command/OpenCommand.kt` | 変更 | テンプレートコピーロジックを追加 |
+| `src/nativeTest/kotlin/net/kigawa/dilot/config/OpenCommandTest.kt` | 変更 | テンプレート生成ケースのテストを追加 |
+
+### 実装方針
+
+1. `OpenCommand` にテンプレート読み込みと `.devcontainer` 生成のロジックを追加する
+2. テンプレートファイルの読み込みと書き込みは `platform.posix` のファイルI/O関数を使用する
+3. テスト用にファイルI/Oを差し替えられるよう、テンプレートの読み込みと書き込みをラムダで注入可能にする
+4. テスト: `.devcontainer` 存在時スキップ・存在しない時にテンプレートがコピーされることを確認
