@@ -1,9 +1,7 @@
 package net.kigawa.dilot.command
 
-import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.alloc
-import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.toKString
@@ -13,7 +11,6 @@ import net.kigawa.dilot.config.FileConfigRepository
 import net.kigawa.dilot.config.ConfigRepository
 import net.kigawa.dilot.config.resolveConfigPath
 import platform.posix.getenv
-import platform.posix.readlink
 import platform.posix.stat
 import platform.posix.system
 import kotlin.system.exitProcess
@@ -126,11 +123,7 @@ private fun resolveTemplatePath(): String? {
         if (fileExistsImpl(path)) return path
     }
 
-    val binaryDir = memScoped {
-        val buf = allocArray<ByteVar>(4096)
-        val len = readlink("/proc/self/exe", buf, 4095u)
-        if (len > 0L) buf.toKString().substringBeforeLast('/') else null
-    }
+    val binaryDir = getBinaryDir()
     if (binaryDir != null) {
         val path = "$binaryDir/templates/devcontainer.json"
         if (fileExistsImpl(path)) return path
